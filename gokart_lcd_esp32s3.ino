@@ -12,10 +12,20 @@
 // I2C pins for ESP32-S3
 #define SDA_PIN 21
 #define SCL_PIN 47
-#define rightPedal 7
-#define leftPedal 8
-#define rightButton 9
-#define leftButton 10
+
+// Pedal pin definitions connecting to ESP32S3
+#define RIGHT_PEDAL_PIN 7
+#define LEFT_PEDAL_PIN 8
+
+// Button pin definitions connecting to ESP32S3
+#define RIGHT_BUTTON_PIN 9
+#define LEFT_BUTTON_PIN 10
+
+// 2 Channel relay pin definitions, connects to each 3 speed
+#define LEFT_THREE_SPEED_IN1_BLUE 35
+#define LEFT_THREE_SPEED_IN2_YELLOW 25
+#define RIGHT_THREE_SPEED_IN1_BLUE 34
+#define RIGHT_THREE_SPEED_IN2_YELLOW 24
 
 // Create display object
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
@@ -26,7 +36,16 @@ bool gearChange = true;
 // Variables
 int currentScreen = 2; // value from 1-3
 int currentSpeed = 0; // This will be replaced with actual speed from ESC later
-int currentGear = 1;
+int currentGear = 0; // values from 0-2 according to gearInfo typedef
+
+//typedef for gear
+
+typedef enum {
+  LOW,
+  MEDIUM,
+  HIGH,
+  NUM_OF_GEARS,
+} gearInfo;
 
 void setup() {
   // Initialize I2C
@@ -38,20 +57,21 @@ void setup() {
     while(true);
   }
 
+  //basic setup
   display.clearDisplay();
   display.setTextSize(0.75);
   display.setTextColor(SSD1306_WHITE);
-  display.setCursor(65,5);
   display.setTextWrap(false);
-  display.print("Gear: ");
   display.display();
 
-  pinMode(leftPedal, INPUT_PULLUP);
-  pinMode(rightPedal, INPUT_PULLUP);
-  pinMode(leftButton, INPUT_PULLUP);
-  pinMode(rightButton, INPUT_PULLUP);
+  //pinmode setup
+  pinMode(LEFT_PEDAL_PIN, INPUT_PULLUP);
+  pinMode(RIGHT_PEDAL_PIN, INPUT_PULLUP);
+  pinMode(LEFT_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(RIGHT_BUTTON_PIN, INPUT_PULLUP);
 }
 
+// Basic function that updates gear value 
 void updateGear() {
  // Later will fetch gear from ESP input from pedals
   currentGear += 1;
@@ -61,6 +81,7 @@ void updateGear() {
 
 }
 
+// Basic function that updates speed value
 void updateSpeed() {
   // Later this function will fetch the speed from the ESC
   currentSpeed += 5; // debugging, changing speed
@@ -69,15 +90,20 @@ void updateSpeed() {
   }
 }
 
+// Basic function that updates gear value on LCD screen
 void displayGear() {
   if (gearChange){
     display.display();
+    display.setCursor(65,5);
+    display.setTextWrap(false);
+    display.print("Gear: ");
     display.setCursor(95,5);
     display.fillRect(95,5,5,7,SSD1306_BLACK);
     display.print(currentGear);
   } 
 }
 
+// Basic function that updates speed value on LCD screen
 void displaySpeed() {
   display.display();
   display.fillRect(50,32,70,7,SSD1306_BLACK);
@@ -88,6 +114,7 @@ void displaySpeed() {
   display.setTextSize(0.75);
 }
 
+// Basic function that clears LCD screen of all that is currently being displayed
 void wipeScreen() {
   display.display();
   display.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT,SSD1306_BLACK);
@@ -95,41 +122,64 @@ void wipeScreen() {
 
 void loop() {
 
-  if (digitalRead(rightPedal) == LOW){
+  // Reading for pedal presses for gear change.
+  // NOTE: must be changed to account for reverse direction
+  if (digitalRead(RIGHT_PEDAL_PIN) == LOW){
     if (currentGear < 3){
       gearChange = true;
       currentGear++;
     }
-  }
-  
-  if (digitalRead(leftPedal) == LOW) {
+  } else if (digitalRead(LEFT_PEDAL_PIN) == LOW) {
     if (currentGear > 1){
       gearChange = true;
       currentGear--;
     }
-  }
-
-  if(digitalRead(rightButton == LOW)) {
+  } else if (digitalRead(RIGHT_BUTTON_PIN == LOW)) {
     if(currentScreen < 3) {
       currentScreen += 1;
     }
   }
 
-  if(digitalRead(leftButton == LOW)) {
-    if(currentScreen > 1) {
-      currentScreen -= 1;
+  // If gear is changed, communicate with 2 channel relay.
+  if(gearChange){
+    if(gear == HIGH) { 
+      digitalWrite(LEFT_THREE_SPEED_IN1_BLUE, LOW);
+      digitalWrite(LEFT_THREE_SPEED_IN2_YELLOW, LOW);
+      digitalWrite(RIGHT_THREE_SPEED_IN1_BLUE, LOW);
+      digitalWrite(RIGHT_THREE_SPEED_IN2_YELLOW, LOW);
+    } else if(gear == MEDIUM)  {
+      digitalWrite(LEFT_THREE_SPEED_IN1_BLUE, HIGH);
+      digitalWrite(LEFT_THREE_SPEED_IN2_YELLOW, LOW);
+      digitalWrite(RIGHT_THREE_SPEED_IN1_BLUE, HIGH);
+      digitalWrite(RIGHT_THREE_SPEED_IN2_YELLOW, LOW);
+    } else if(gear == LOW) {
+      digitalWrite(LEFT_THREE_SPEED_IN1_BLUE, LOW);
+      digitalWrite(LEFT_THREE_SPEED_IN2_YELLOW, HIGH);
+      digitalWrite(RIGHT_THREE_SPEED_IN1_BLUE, LOW);
+      digitalWrite(RIGHT_THREE_SPEED_IN2_YELLOW, HIGH);
     }
   }
 
+  //Reading button presses for screen changes
+  if(digitalRead(LEFT_BUTTON_PIN == LOW)) {
+    if(currentScreen > 1) {
+      currentScreen -= 1;
+    }
+  } else if (digitalRead(RIGHT_BUTTON_PIN == LOW)) {
+    if(currentScreen < 3) {
+      currentScreen += 1;
+    }
+  } 
+
   if(currentScreen == 1) {
-    
+    //display something
   } else if(currentScreen == 2) {
+    //displays gear
     wipeScreen();
     updateGear();
     displayGear();
   } else if(currentScreen == 3) {
-
+    //display something
   }
-  display.display();
   delay(200);
 }
