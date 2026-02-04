@@ -21,17 +21,21 @@
 #define RIGHT_BUTTON_PIN 9
 #define LEFT_BUTTON_PIN 10
 
-// 2 Channel relay pin definitions, connects to each 3 speed
+// 6 Channel relay pin definitions, connects to each 3 speed
 #define LEFT_THREE_SPEED_IN1_BLUE 35
 #define LEFT_THREE_SPEED_IN2_YELLOW 25
 #define RIGHT_THREE_SPEED_IN1_BLUE 34
 #define RIGHT_THREE_SPEED_IN2_YELLOW 24
+#define REVERSE_LEFT_MOTOR -1
+#define REVERSE_RIGHT_MOTOR -1
 
 // Create display object
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// Constants
-bool gearChange = true;
+// Booleans
+bool reverseUpdate = false; //signifies update in reversal of gokart
+bool gearChange = true; //signifies update in gear change
+bool reverse = false; //signifies gokart is in reverse
 
 // Variables
 int currentScreen = 2; // value from 1-3
@@ -120,27 +124,44 @@ void wipeScreen() {
   display.fillRect(0,0,SCREEN_WIDTH,SCREEN_HEIGHT,SSD1306_BLACK);
 }
 
-void loop() {
-
-  // Reading for pedal presses for gear change.
-  // NOTE: must be changed to account for reverse direction
-  if (digitalRead(RIGHT_PEDAL_PIN) == LOW){
-    if (currentGear < 3){
-      gearChange = true;
-      currentGear++;
-    }
-  } else if (digitalRead(LEFT_PEDAL_PIN) == LOW) {
-    if (currentGear > 1){
-      gearChange = true;
-      currentGear--;
-    }
-  } else if (digitalRead(RIGHT_BUTTON_PIN == LOW)) {
-    if(currentScreen < 3) {
-      currentScreen += 1;
+// Function that checks for pedal inputs and updates gear + reversal accordingly
+void checkPedalInputs() {
+  // Reading for pedal presses for gear change + changing reversal of direction
+  if(!reverse) {
+    if (digitalRead(RIGHT_PEDAL_PIN) == LOW){
+      if (currentGear < 3){
+        gearChange = true;
+        currentGear++;
+      }
+    } else if (digitalRead(LEFT_PEDAL_PIN) == LOW) {
+      if (currentGear > 1){
+        gearChange = true;
+        currentGear--;
+      } else if(currentGear == 1) {
+        reverseUpdate = true;
+        reverse = true;
+      }
+    } 
+  } else if (reverse) {
+    if (digitalRead(RIGHT_PEDAL_PIN) == LOW){
+      if (currentGear > 1){
+        gearChange = true;
+        currentGear--;
+      } else if(currentGear == 1) {
+        reverseUpdate = true;
+        reverse = true;
+      }
+    } else if (digitalRead(LEFT_PEDAL_PIN) == LOW) {
+      if (currentGear < 3){
+        gearChange = true;
+        currentGear++;
+      }
     }
   }
+}
 
-  // If gear is changed, communicate with 2 channel relay.
+// Checks if gear must be updated, and communicates to relay accordingly.
+void changeGear() {
   if(gearChange){
     if(gear == HIGH) { 
       digitalWrite(LEFT_THREE_SPEED_IN1_BLUE, LOW);
@@ -158,9 +179,10 @@ void loop() {
       digitalWrite(RIGHT_THREE_SPEED_IN1_BLUE, LOW);
       digitalWrite(RIGHT_THREE_SPEED_IN2_YELLOW, HIGH);
     }
-  }
+}
 
-  //Reading button presses for screen changes
+// Reads button press inputs and updates currentScreen variable
+void updateScreen() {
   if(digitalRead(LEFT_BUTTON_PIN == LOW)) {
     if(currentScreen > 1) {
       currentScreen -= 1;
@@ -170,6 +192,15 @@ void loop() {
       currentScreen += 1;
     }
   } 
+}
+
+void loop() {
+  // Check Pedal Inputs
+  checkPedalInputs();
+  // If gear is changed, communicate with 2 channel relay.
+  changeGear();
+  //Reading button presses for screen changes
+  updateScreen();
 
   if(currentScreen == 1) {
     //display something
@@ -181,5 +212,6 @@ void loop() {
   } else if(currentScreen == 3) {
     //display something
   }
+  
   delay(200);
 }
