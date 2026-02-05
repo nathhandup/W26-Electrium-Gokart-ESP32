@@ -12,8 +12,8 @@
 #define OLED_RESET -1
 
 // I2C pins for ESP32-S3
-#define SDA_PIN 21
-#define SCL_PIN 47
+//#define SDA_PIN 21
+//#define SCL_PIN 47
 
 // Pedal pin definitions connecting to ESP32S3
 #define RIGHT_PEDAL_PIN 7
@@ -58,17 +58,21 @@ int currentGear = 2; // values from 0-2 according to gearInfo typedef
 
 void setup() {
 
-  digitalWrite(LEFT_REVERSE_IN5_BROWN, HIGH);
-  digitalWrite(RIGHT_REVERSE_IN6_BROWN, LOW);
+  //digitalWrite(LEFT_REVERSE_IN5_BROWN, HIGH);
+  //digitalWrite(RIGHT_REVERSE_IN6_BROWN, LOW);
   
   // Initialize I2C
-  Wire.begin(SDA_PIN, SCL_PIN);
+  //Wire.begin(SDA_PIN, SCL_PIN);
 
   // Initialize serial & bms serial and bms
+  //delay(200);
   BMS_SERIAL.begin(9600, SERIAL_8N1, RX_PIN, TX_PIN);
-  Serial.begin(9600);
-  bms.Init();
 
+  //delay(200);
+  Serial.begin(9600);
+
+  //delay(200);
+  bms.Init();
   // Initialize display
   if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { // 0x3C is the common I2C address
     Serial.println(F("SSD1306 allocation failed"));
@@ -83,10 +87,22 @@ void setup() {
   display.display();
 
   //pinmode setup
+  /*
   pinMode(LEFT_PEDAL_PIN, INPUT_PULLUP);
   pinMode(RIGHT_PEDAL_PIN, INPUT_PULLUP);
   pinMode(LEFT_BUTTON_PIN, INPUT_PULLUP);
   pinMode(RIGHT_BUTTON_PIN, INPUT_PULLUP);
+
+  pinMode(LEFT_THREE_SPEED_IN1_BLUE, OUTPUT);
+  pinMode(LEFT_THREE_SPEED_IN2_YELLOW, OUTPUT);
+  pinMode(RIGHT_THREE_SPEED_IN3_BLUE, OUTPUT);
+  pinMode(RIGHT_THREE_SPEED_IN4_YELLOW, OUTPUT);
+  pinMode(LEFT_REVERSE_IN5_BROWN, OUTPUT);
+  pinMode(RIGHT_REVERSE_IN6_BROWN, OUTPUT);
+  */
+
+  pinMode(21, OUTPUT);
+  digitalWrite(21, LOW);
 }
 
 // NOT NEEDED // Basic function that updates gear value 
@@ -250,14 +266,21 @@ void loop() {
 
 //temporary loop for testing BMS values
 void loop() {
-  
+
   Serial.println("Press any key and hit enter to query data from the BMS...");
   while(Serial.available() == 0)
   {
   }
   Serial.read(); // discard character
   Serial.read(); //discard new line
-  bms.update();
+  bool bms_updated = bms.update();
+
+  Serial.println("BMS successfully updated?    " + (String)bms_updated);
+  Serial.println("Got pack measurements?:      " + (String)bms.getPackMeasurements());
+  Serial.println("Got pack temp?:      " + (String)bms.getPackTemp());
+  Serial.println("Got minmax cell volt?:      " + (String)bms.getMinMaxCellVoltage());
+  Serial.println("Got status info?:      " + (String)bms.getStatusInfo());
+  Serial.println("Got Cell Voltages:      " + (String)bms.getCellVoltages());
 
   Serial.println("Basic BMS Data:              " + (String)bms.get.packVoltage + "V " + (String)bms.get.packCurrent + "I " + (String)bms.get.packSOC + "\% ");
   Serial.println("Package Temperature (C):     " + (String)bms.get.tempAverage);
@@ -270,4 +293,5 @@ void loop() {
   Serial.println("Discharge MOSFet Status:     " + (String)bms.get.disChargeFetState);
   Serial.println("Charge MOSFet Status:        " + (String)bms.get.chargeFetState);
   Serial.println("Remaining Capacity mAh:      " + (String)bms.get.resCapacitymAh);
+  Serial.println("Debug Data String:      " + bms.get.aDebug);
 }
