@@ -60,6 +60,13 @@ void setup() {
 
   digitalWrite(LEFT_REVERSE_IN5_BROWN, HIGH);
   digitalWrite(RIGHT_REVERSE_IN6_BROWN, LOW);
+
+  pinMode(LEFT_THREE_SPEED_IN1_BLUE, OUTPUT);
+  pinMode(LEFT_THREE_SPEED_IN2_YELLOW, OUTPUT);
+  pinMode(RIGHT_THREE_SPEED_IN3_BLUE, OUTPUT);
+  pinMode(RIGHT_THREE_SPEED_IN4_YELLOW, OUTPUT);
+  pinMode(LEFT_REVERSE_IN5_BROWN, OUTPUT);
+  pinMode(RIGHT_REVERSE_IN6_BROWN, OUTPUT);
   
   // Initialize I2C
   Wire.begin(SDA_PIN, SCL_PIN);
@@ -77,7 +84,7 @@ void setup() {
 
   //basic setup
   display.clearDisplay();
-  display.setTextSize(0.75);
+  display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
   display.setTextWrap(false);
   display.display();
@@ -93,13 +100,13 @@ void setup() {
 // Basic function that updates gear value on LCD screen
 void displayGear() {
   if (gearChange){
-    display.display();
     display.setCursor(65,5);
     display.setTextWrap(false);
     display.print("Gear: ");
     display.setCursor(95,5);
     display.fillRect(95,5,5,7,SSD1306_BLACK);
     display.print(currentGear + 1);
+    display.display();
     gearChange = false;
   } 
 }
@@ -112,7 +119,7 @@ void displaySpeed() {
   display.print(currentSpeed);
   display.setTextSize(0.25);
   display.print("km/h");
-  display.setTextSize(0.75);
+  display.setTextSize(1);
 }
 
 // Basic function that clears LCD screen of all that is currently being displayed
@@ -195,11 +202,11 @@ void changeReverse() {
 
 // Reads button press inputs and updates currentScreen variable
 void updateScreen() {
-  if(digitalRead(LEFT_BUTTON_PIN == LOW)) {
-    if(currentScreen > 1) {
+  if(digitalRead(LEFT_BUTTON_PIN) == LOW) {
+    if(currentScreen > 0) {
       currentScreen -= 1;
     }
-  } else if (digitalRead(RIGHT_BUTTON_PIN == LOW)) {
+  } else if (digitalRead(RIGHT_BUTTON_PIN) == LOW) {
     if(currentScreen < 1) {
       currentScreen += 1;
     }
@@ -210,14 +217,20 @@ void loop() {
   // Check Pedal Inputs
   checkPedalInputs();
   // If gear is changed, communicate with 2 channel relay.
+  if (gearChange) {
   changeGear();
+  gearChange = false;
+  delay(300);
+}
   changeReverse();
   // Reading button presses for screen changes
   updateScreen();
   // Update BMS
   if(currentScreen == 0) {
-    //display something
     wipeScreen();
+
+    display.setCursor(20, 20);
+    display.print("Screen 1");
   } else if(currentScreen == 1) {
     //displays gear
     wipeScreen();
@@ -225,6 +238,5 @@ void loop() {
     displayGear();
   }
   reverseUpdate = false;
-  gearChange = false;
-  delay(300);
+  delay(50);
 }
